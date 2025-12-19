@@ -52,7 +52,8 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate briefs')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate briefs')
       }
 
       const data = await response.json()

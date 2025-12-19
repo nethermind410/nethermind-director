@@ -4,11 +4,11 @@ import { VideoIdea, ClipSource } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   try {
-    const { geminiKey, youtubeKey } = await request.json()
+    const { openaiKey, youtubeKey } = await request.json()
 
-    if (!geminiKey) {
+    if (!openaiKey) {
       return NextResponse.json(
-        { error: 'Missing Gemini API key' },
+        { error: 'Missing OpenAI API key' },
         { status: 400 }
       )
     }
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       youtube: youtubeTrends.slice(0, 10)
     }
 
-    console.log('Generating ideas with Gemini...')
+    console.log('Generating ideas with OpenAI...')
 
     const prompt = `You are the content director for "Nethermind" - a YouTube/TikTok channel focused on comics, anime, gaming, movies, nerd culture with dark humor and "buff nerd" energy. Think ironic detachment + genuine passion.
 
@@ -76,36 +76,36 @@ Format your response as JSON ONLY, no markdown:
 
 Make DECISIONS. Be BOLD. Connect unexpected dots.`
 
-    // Call Gemini API
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+    // Call OpenAI API
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: prompt
         }],
-        generationConfig: {
-          temperature: 0.9,
-          maxOutputTokens: 8000,
-        }
+        temperature: 0.9,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' }
       })
     })
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text()
-      console.error('Gemini API error:', errorText)
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text()
+      console.error('OpenAI API error:', errorText)
       return NextResponse.json(
-        { error: 'Failed to generate ideas from Gemini' },
+        { error: 'Failed to generate ideas from OpenAI' },
         { status: 500 }
       )
     }
 
-    const geminiData = await geminiResponse.json()
-    const responseText = geminiData.candidates[0].content.parts[0].text
+    const openaiData = await openaiResponse.json()
+    const responseText = openaiData.choices[0].message.content
 
     // Parse JSON from Gemini's response
     let ideasWithQueries

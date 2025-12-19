@@ -24,15 +24,15 @@ interface VideoIdea {
 }
 
 export default function Home() {
-  const [geminiKey, setGeminiKey] = useState('')
+  const [openaiKey, setOpenaiKey] = useState('')
   const [youtubeKey, setYoutubeKey] = useState('')
   const [ideas, setIdeas] = useState<VideoIdea[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const generateBriefs = async () => {
-    if (!geminiKey) {
-      setError('Please enter Gemini API key')
+    if (!openaiKey) {
+      setError('Please enter OpenAI API key')
       return
     }
 
@@ -46,7 +46,7 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          geminiKey,
+          openaiKey,
           youtubeKey,
         }),
       })
@@ -82,16 +82,16 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-300">
-                Google Gemini API Key (FREE)
+                OpenAI API Key
               </label>
               <input
                 type="password"
-                value={geminiKey}
-                onChange={(e) => setGeminiKey(e.target.value)}
-                placeholder="AIza..."
+                value={openaiKey}
+                onChange={(e) => setOpenaiKey(e.target.value)}
+                placeholder="sk-..."
                 className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-nether-purple text-white"
               />
-              <p className="text-xs text-gray-500 mt-1">Get free at: ai.google.dev</p>
+              <p className="text-xs text-gray-500 mt-1">Get at: platform.openai.com/api-keys</p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-300">

@@ -31,8 +31,8 @@ export default function Home() {
   const [error, setError] = useState('')
 
   const generateBriefs = async () => {
-    if (!geminiKey || !youtubeKey) {
-      setError('Please enter both API keys')
+    if (!geminiKey) {
+      setError('Please enter Gemini API key')
       return
     }
 
@@ -95,15 +95,16 @@ export default function Home() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-300">
-                YouTube Data API Key
+                YouTube Data API Key (Optional)
               </label>
               <input
                 type="password"
                 value={youtubeKey}
                 onChange={(e) => setYoutubeKey(e.target.value)}
-                placeholder="AIza..."
+                placeholder="AIza... (optional - for clip sourcing)"
                 className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-nether-cyan text-white"
               />
+              <p className="text-xs text-gray-500 mt-1">Leave blank to skip clip sourcing</p>
             </div>
           </div>
 

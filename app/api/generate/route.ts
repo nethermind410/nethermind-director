@@ -6,9 +6,9 @@ export async function POST(request: NextRequest) {
   try {
     const { geminiKey, youtubeKey } = await request.json()
 
-    if (!geminiKey || !youtubeKey) {
+    if (!geminiKey) {
       return NextResponse.json(
-        { error: 'Missing API keys' },
+        { error: 'Missing Gemini API key' },
         { status: 400 }
       )
     }
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       fetchRedditTrends(),
       fetchMALTrends(),
       fetchTMDBTrends(),
-      fetchYouTubeTrends(youtubeKey)
+      youtubeKey ? fetchYouTubeTrends(youtubeKey) : Promise.resolve([])
     ])
 
     // Prepare context
@@ -134,25 +134,27 @@ Make DECISIONS. Be BOLD. Connect unexpected dots.`
       ideasWithQueries.ideas.map(async (idea: any) => {
         const clipSources: ClipSource[] = []
 
-        // Search for clips using the queries
-        for (const query of idea.clipSearchQueries || []) {
-          try {
-            const results = await searchYouTubeClips(youtubeKey, query, 2)
+        // Search for clips using the queries (only if YouTube key provided)
+        if (youtubeKey) {
+          for (const query of idea.clipSearchQueries || []) {
+            try {
+              const results = await searchYouTubeClips(youtubeKey, query, 2)
 
-            for (const result of results.slice(0, 1)) {
-              const timestamp = '0:00-0:15'
+              for (const result of results.slice(0, 1)) {
+                const timestamp = '0:00-0:15'
 
-              clipSources.push({
-                videoTitle: result.title,
-                channelName: result.channelTitle,
-                videoUrl: `https://www.youtube.com/watch?v=${result.videoId}`,
-                timestamp,
-                searchTerms: [query],
-                reasoning: `Found using search: "${query}"`
-              })
+                clipSources.push({
+                  videoTitle: result.title,
+                  channelName: result.channelTitle,
+                  videoUrl: `https://www.youtube.com/watch?v=${result.videoId}`,
+                  timestamp,
+                  searchTerms: [query],
+                  reasoning: `Found using search: "${query}"`
+                })
+              }
+            } catch (error) {
+              console.error(`Failed to search for "${query}":`, error)
             }
-          } catch (error) {
-            console.error(`Failed to search for "${query}":`, error)
           }
         }
 

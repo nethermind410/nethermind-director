@@ -4,9 +4,9 @@ import { VideoIdea, ClipSource } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   try {
-    const { claudeKey, youtubeKey } = await request.json()
+    const { geminiKey, youtubeKey } = await request.json()
 
-    if (!claudeKey || !youtubeKey) {
+    if (!geminiKey || !youtubeKey) {
       return NextResponse.json(
         { error: 'Missing API keys' },
         { status: 400 }
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       fetchYouTubeTrends(youtubeKey)
     ])
 
-    // Prepare context for Claude
+    // Prepare context
     const trendContext = {
       reddit: redditPosts.slice(0, 15),
       myAnimeList: malAnime.slice(0, 10),
@@ -30,22 +30,9 @@ export async function POST(request: NextRequest) {
       youtube: youtubeTrends.slice(0, 10)
     }
 
-    console.log('Generating ideas with Claude...')
+    console.log('Generating ideas with Gemini...')
 
-    // Call Claude API to generate ideas
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': claudeKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 8000,
-        messages: [{
-          role: 'user',
-          content: `You are the content director for "Nethermind" - a YouTube/TikTok channel focused on comics, anime, gaming, movies, nerd culture with dark humor and "buff nerd" energy. Think ironic detachment + genuine passion.
+    const prompt = `You are the content director for "Nethermind" - a YouTube/TikTok channel focused on comics, anime, gaming, movies, nerd culture with dark humor and "buff nerd" energy. Think ironic detachment + genuine passion.
 
 CURRENT TRENDS:
 ${JSON.stringify(trendContext, null, 2)}
@@ -70,7 +57,7 @@ CRITICAL: For clip search queries, think like you're actually searching YouTube.
 - Reaction clips that fit the vibe
 - B-roll search terms
 
-Format your response as JSON:
+Format your response as JSON ONLY, no markdown:
 {
   "ideas": [
     {
@@ -88,34 +75,51 @@ Format your response as JSON:
 }
 
 Make DECISIONS. Be BOLD. Connect unexpected dots.`
-        }]
+
+    // Call Gemini API
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 8000,
+        }
       })
     })
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text()
-      console.error('Claude API error:', errorText)
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text()
+      console.error('Gemini API error:', errorText)
       return NextResponse.json(
-        { error: 'Failed to generate ideas from Claude' },
+        { error: 'Failed to generate ideas from Gemini' },
         { status: 500 }
       )
     }
 
-    const claudeData = await claudeResponse.json()
-    const responseText = claudeData.content[0].text
+    const geminiData = await geminiResponse.json()
+    const responseText = geminiData.candidates[0].content.parts[0].text
 
-    // Parse JSON from Claude's response
+    // Parse JSON from Gemini's response
     let ideasWithQueries
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      // Remove markdown code blocks if present
+      const cleanedResponse = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '')
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         ideasWithQueries = JSON.parse(jsonMatch[0])
       } else {
         throw new Error('No JSON found in response')
       }
     } catch (parseError) {
-      console.error('Failed to parse Claude response:', parseError)
+      console.error('Failed to parse Gemini response:', parseError)
       console.log('Raw response:', responseText)
       return NextResponse.json(
         { error: 'Failed to parse AI response' },
@@ -135,8 +139,7 @@ Make DECISIONS. Be BOLD. Connect unexpected dots.`
           try {
             const results = await searchYouTubeClips(youtubeKey, query, 2)
 
-            for (const result of results.slice(0, 1)) { // Take best result per query
-              // Estimate a timestamp based on video duration (you could enhance this)
+            for (const result of results.slice(0, 1)) {
               const timestamp = '0:00-0:15'
 
               clipSources.push({
@@ -162,7 +165,7 @@ Make DECISIONS. Be BOLD. Connect unexpected dots.`
           captions: idea.captions,
           hashtags: idea.hashtags,
           reasoning: idea.reasoning,
-          clipSources: clipSources.slice(0, 5) // Limit to 5 clips per video
+          clipSources: clipSources.slice(0, 5)
         }
       })
     )
